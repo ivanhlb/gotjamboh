@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: get-started-python
+  name: GotJamBoh
   labels:
-    app: get-started-python
+    app: GotJamBoh
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: get-started-python
+      app: GotJamBoh
   template:
     metadata:
       labels:
-        app: get-started-python
+        app: GotJamBoh
     spec:
       containers:
-      - name: get-started-python
+      - name: GotJamBoh
         image: <REGISTRY>/<NAMESPACE>/myapp:v1.0.0
         ports:
         - containerPort: 8000

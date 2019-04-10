@@ -1,0 +1,10 @@
+{% extends "index.html" %}
+{% block content %}
+{{ super() }}
+{% if data %}
+<h2>Traffic Conditions close to {{ data.name }}</h2>
+
+{% else %}
+<h2>Unable to detect location. Showing all results.</h2>
+{% endif %}
+{% endblock %}

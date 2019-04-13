@@ -1,10 +1,18 @@
 {% extends "index.html" %}
 {% block content %}
 {{ super() }}
-{% if data %}
-<h2>Traffic Conditions close to {{ data.name }}</h2>
-
+<h2>Traffic Conditions</h2>
+{% if data.name %}
+<p>Ordered from closest to {{ data.name }}.</p>
 {% else %}
-<h2>Unable to detect location. Showing all results.</h2>
+<p>Unable to detect location. Showing all results randomly.</p>
 {% endif %}
+<!-- have to use inline style cos css wasn't working. -->
+{% for camera in data.cameras %}
+<div class="camera-image" style="display: inline-table; padding:0.2em; border: 0.2em solid darkgoldenrod">
+    <img src={{ camera["image"] }} height="240" width="360" alt={{ camera["area"] }}>
+    <p style="text-align:center">{{ camera["area"] }}</p>
+    <p style="text-align:center">{% if camera.cars_detected < 8 %}low congestion.{% elif camera.cars_detected < 16%}medium congestion.{% else %}high congestion.{% endif %}</p>
+</div>
+{% endfor %}
 {% endblock %}

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hello World</title>
+    <title>Got Jam Boh?</title>
 
     <!-- Bootstrap -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
@@ -22,7 +22,7 @@
 
 <body>
     <div class="container" id="container">
-        <h1>Eh Got Jam Boh?</h1>
+        <h1>An Overview of the traffic congestion level in Singapore.</h1>
         <button onclick="getLocation()">Use your Location</button>
         <form  action="/get" method="POST">
             <input type="hidden" id="latitude" name="latitude" value="">
@@ -56,7 +56,6 @@
     function usePosition(position) {
         document.getElementById("latitude").value = position.coords.latitude;
         document.getElementById("longitude").value = position.coords.longitude;
-        document.getElementById("submitBtn").value = "Check closest traffic condition";
         document.getElementById("submitBtn").value = "Check closest traffic condition";
     }
 </script>

@@ -6,12 +6,8 @@ import os
 import json
 from datetime import *
 import csv
-
-# region for calling detection api from sighthound
-import http.client as httplib
-import ssl
-# endregion
-
+import numpy as np
+import cv2
 
 app = Flask(__name__, static_url_path='')
 
@@ -54,26 +50,19 @@ debug = True if os.environ.get('PORT') is None else False
 # region actual traffic analysis
 
 
-def detect_traffic(url: str):
-    file = open("sighthound_key.txt")
-    key = os.getenv('sighthound_key', file.read())
-    file.close()
-    headers = {"Content-type": "application/json",
-               "X-Access-Token": key}
-    conn = httplib.HTTPSConnection("dev.sighthoundapi.com",
-                                   context=ssl.SSLContext(ssl.PROTOCOL_TLSv1))
+def url_to_image(url: str):
+    urlImg = requests.get(url)
+    image = np.asarray(bytearray(urlImg.content), dtype="uint8")
+    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    return image
 
-    params = json.dumps({"image": url})
-    conn.request("POST", "/v1/recognition?objectType=vehicle", params, headers)
-    response = conn.getresponse()
-    result = response.read()
-    result_str = str(result)
-    start_ind = result_str.find('\'')
-    end_ind = result_str.rfind('\'')
-    result_str = result_str[start_ind+1:end_ind]
-    api_result = json.loads(result_str)
-    num_of_vehicles = len(api_result["objects"])
-    return num_of_vehicles  # return length of array of detected objects.
+
+def detect_traffic(img):
+    car_cascade = cv2.CascadeClassifier('cars.xml')
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # detects cars using trained cascade and grayscale img.
+    cars = car_cascade.detectMultiScale(gray)
+    return len(cars)
 # endregion
 
 
@@ -129,25 +118,43 @@ def get_camera_area():
         # col 0: id, col 1: lat, col 2: long, col 3: area string
         # only need area actually to print to web app.
         data[row[0]] = {"area": row[3]}
-    dataFile.close()
     return data
 
+
+def get_camera_data():
+    # getting the updated json takes a while..
+    file = open("cached.json") if os.path.isfile(
+        "cached.json") else open("cached.json", "w+")
+    api_value = None
+    # for some reason the cached json is empty
+    if os.path.getsize("cached.json") == 0:
+        file.close()
+        api_value = get_updated_json(file)
+    else:
+        api_value = json.load(file)
+        api_value["items"][0]["timestamp"] = api_value["items"][0]["timestamp"].replace("+08:00", "+0800")
+        datetimeObj = datetime.strptime(
+            api_value["items"][0]["timestamp"], '%Y-%m-%dT%H:%M:%S%z')
+        timeNow = datetime.now(datetimeObj.tzinfo)
+        if timeNow - datetimeObj > timedelta(minutes=1):
+            print("Fetching new values from data.gov.sg...")
+            file.close()
+            api_value = get_updated_json(file)
+
+    return api_value
 # endregion
 
 # region finalize data
 
-
 def get_final_camera_data(lat: float = None, long: float = None):
-    apiString = requests.get(
-        "https://api.data.gov.sg/v1/transport/traffic-images").text
-    api_value = json.loads(apiString)
+    api_value = get_camera_data()
     camera_data = api_value["items"][0]["cameras"]
     temp = get_camera_area()
     final_data = []
     for camera in camera_data:
         temp[camera["camera_id"]]["image"] = camera["image"]
         temp[camera["camera_id"]]["cars_detected"] = detect_traffic(
-            camera["image"])
+            url_to_image(camera["image"]))
         if lat is not None and long is not None:
             temp[camera["camera_id"]]["distance"] = get_sqr_dis(
                 lat, long, camera["location"]["latitude"], camera["location"]["longitude"])
@@ -157,6 +164,13 @@ def get_final_camera_data(lat: float = None, long: float = None):
         final_data.sort(key=lambda k: k['distance'])
     return final_data
 
+
+def get_updated_json(file):
+    file = open("cached.json", "w")
+    jsonString = requests.get(
+        "https://api.data.gov.sg/v1/transport/traffic-images").text
+    file.write(jsonString)
+    return json.loads(jsonString)
 # endregion
 
 

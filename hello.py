@@ -6,12 +6,15 @@ import os
 import json
 from datetime import *
 import csv
-import numpy as np
-import cv2
+
+# region for calling detection api from sighthound
+import http.client as httplib
+import ssl
+# endregion
+
 
 app = Flask(__name__, static_url_path='')
 
-np.__version__
 db_name = 'mydb'
 client = None
 db = None
@@ -51,19 +54,26 @@ debug = True if os.environ.get('PORT') is None else False
 # region actual traffic analysis
 
 
-def url_to_image(url: str):
-    urlImg = requests.get(url)
-    image = np.asarray(bytearray(urlImg.content), dtype="uint8")
-    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    return image
+def detect_traffic(url: str):
+    file = open("sighthound_key.txt")
+    key = os.getenv('sighthound_key', file.read())
+    file.close()
+    headers = {"Content-type": "application/json",
+               "X-Access-Token": key}
+    conn = httplib.HTTPSConnection("dev.sighthoundapi.com",
+                                   context=ssl.SSLContext(ssl.PROTOCOL_TLSv1))
 
-
-def detect_traffic(img):
-    car_cascade = cv2.CascadeClassifier('cars.xml')
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # detects cars using trained cascade and grayscale img.
-    cars = car_cascade.detectMultiScale(gray, 1.01, 1)
-    return len(cars)
+    params = json.dumps({"image": url})
+    conn.request("POST", "/v1/recognition?objectType=vehicle", params, headers)
+    response = conn.getresponse()
+    result = response.read()
+    result_str = str(result)
+    start_ind = result_str.find('\'')
+    end_ind = result_str.rfind('\'')
+    result_str = result_str[start_ind+1:end_ind]
+    api_result = json.loads(result_str)
+    num_of_vehicles = len(api_result["objects"])
+    return num_of_vehicles  # return length of array of detected objects.
 # endregion
 
 
@@ -95,8 +105,8 @@ def get_sqr_dis(lat1: float, long1: float, lat2: float, long2: float):
 
 def call_google_api(data: dict):
     # use env var on deployed vers, use gitignored local file for local testing. Google API key is not exposed to anyone else.
-    file = open("key.txt")
-    key = os.getenv('key', file.read())
+    file = open("google_key.txt")
+    key = os.getenv('google_key', file.read())
     file.close()
     jsonStr = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + data['lat'] + "," + data['long'] + "&key=" + key).text
@@ -126,6 +136,7 @@ def get_camera_area():
 
 # region finalize data
 
+
 def get_final_camera_data(lat: float = None, long: float = None):
     apiString = requests.get(
         "https://api.data.gov.sg/v1/transport/traffic-images").text
@@ -136,7 +147,7 @@ def get_final_camera_data(lat: float = None, long: float = None):
     for camera in camera_data:
         temp[camera["camera_id"]]["image"] = camera["image"]
         temp[camera["camera_id"]]["cars_detected"] = detect_traffic(
-            url_to_image(camera["image"]))
+            camera["image"])
         if lat is not None and long is not None:
             temp[camera["camera_id"]]["distance"] = get_sqr_dis(
                 lat, long, camera["location"]["latitude"], camera["location"]["longitude"])

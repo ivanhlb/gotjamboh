@@ -66,4 +66,5 @@ vcap-local.json
 # Visual Studio
 .vscode
 # Key, not to be put on Source Control
-key.txt
+google_key.txt
+sighthound_key.txt

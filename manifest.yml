@@ -2,4 +2,4 @@
 applications:
  - name: GotJamBoh
    random-route: true
-   memory: 64M
+   memory: 256M

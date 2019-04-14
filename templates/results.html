@@ -7,13 +7,19 @@
 {% else %}
 <p>Unable to detect location. Showing all results randomly.</p>
 {% endif %}
+{% with congest_num = data.cameras|sum(attribute='cars_detected') / data.cameras|count() %}
+<h3>Overall congestion:{% if congest_num < 6 %}low
+    congestion.{% elif congest_num < 12%}medium congestion.{% else %}high congestion.{% endif %}</h3>
+{% endwith %}
+
 <!-- have to use inline style cos css wasn't working. -->
 {% for camera in data.cameras %}
 <div class="camera-image" style="display: inline-table; padding:0.2em; border: 0.2em solid darkgoldenrod">
     <img src={{ camera["image"] }} height="240" width="360" alt={{ camera["area"] }}>
     <p style="text-align:center">{{ camera["area"] }}</p>
     {% if camera.cars_detected %}
-    <p style="text-align:center">{% if camera.cars_detected < 8 %}low congestion.{% elif camera.cars_detected < 16%}medium congestion.{% else %}high congestion.{% endif %}</p>
+    <p style="text-align:center">{% if camera.cars_detected < 6 %}low
+        congestion.{% elif camera.cars_detected < 12%}medium congestion.{% else %}high congestion.{% endif %}</p>
     {% else %}
     <p style="text-align: center">no vehicles detected.</p>
     {% endif %}

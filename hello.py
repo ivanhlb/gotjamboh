@@ -62,7 +62,8 @@ def detect_traffic(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # detects cars using trained cascade and grayscale img.
     cars = car_cascade.detectMultiScale(gray)
-    return len(cars)
+    result = len(cars)
+    return 0 if result is None else result
 # endregion
 
 
@@ -153,15 +154,17 @@ def get_final_camera_data(lat: float = None, long: float = None):
     final_data = []
     for camera in camera_data:
         temp[camera["camera_id"]]["image"] = camera["image"]
-        temp[camera["camera_id"]]["cars_detected"] = detect_traffic(
-            url_to_image(camera["image"]))
         if lat is not None and long is not None:
             temp[camera["camera_id"]]["distance"] = get_sqr_dis(
                 lat, long, camera["location"]["latitude"], camera["location"]["longitude"])
+
     for id, cam in temp.items():
         final_data.append(cam)
     if lat is not None and long is not None:
         final_data.sort(key=lambda k: k['distance'])
+    final_data = final_data[0:12]   #use top 12 results
+    for data in final_data:
+        data["cars_detected"] = detect_traffic(url_to_image(data["image"]))
     return final_data
 
 
